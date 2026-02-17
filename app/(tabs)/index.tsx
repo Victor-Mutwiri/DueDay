@@ -1,98 +1,125 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { useRouter } from "expo-router";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const router = useRouter();
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  return (
+    <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+      >
+        {/* HEADER */}
+        <View style={styles.header}>
+          <Text style={styles.title}>MyMoney</Text>
+          <Pressable onPress={() => router.push("/modal")}>
+            <IconSymbol name="gearshape.fill" size={22} color="#555" />
+          </Pressable>
+        </View>
+
+        {/* UPCOMING BILLS */}
+        <Text style={styles.sectionTitle}>Upcoming Bills</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={styles.billCard}>
+            <Text style={styles.billName}>Netflix</Text>
+            <Text style={styles.billDue}>Due Tomorrow</Text>
+          </View>
+
+          <View style={styles.billCard}>
+            <Text style={styles.billName}>Rent</Text>
+            <Text style={styles.billDue}>Due in 5 days</Text>
+          </View>
+        </ScrollView>
+
+        {/* MONTHLY SUMMARY */}
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryTitle}>This Month</Text>
+          <Text style={styles.summaryAmount}>Ksh 18,450 spent</Text>
+        </View>
+
+        {/* TODAY EXPENSES */}
+        <Text style={styles.sectionTitle}>Today</Text>
+        <View style={styles.listItem}>
+          <Text>Lunch</Text>
+          <Text>Ksh 300</Text>
+        </View>
+        <View style={styles.listItem}>
+          <Text>Fuel</Text>
+          <Text>Ksh 2,000</Text>
+        </View>
+
+        <Text style={styles.todayTotal}>Today Total: Ksh 2,300</Text>
+
+        {/* RECENT ACTIVITY */}
+        <Text style={styles.sectionTitle}>Recent Activity</Text>
+        <View style={styles.listItem}>
+          <Text>Netflix paid</Text>
+          <Text>Ksh 1,200</Text>
+        </View>
+        <View style={styles.listItem}>
+          <Text>Uber</Text>
+          <Text>Ksh 450</Text>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: { flex: 1 },
+  content: { padding: 16 },
+
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+
+  title: { fontSize: 22, fontWeight: "600" },
+
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginTop: 20,
+    marginBottom: 10,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+
+  billCard: {
+    backgroundColor: "#eee",
+    padding: 16,
+    borderRadius: 12,
+    marginRight: 12,
+    width: 150,
+  },
+
+  billName: { fontWeight: "600" },
+  billDue: { marginTop: 4, color: "#666" },
+
+  summaryCard: {
+    backgroundColor: "#f5f5f5",
+    padding: 20,
+    borderRadius: 12,
+    marginTop: 10,
+  },
+
+  summaryTitle: { color: "#666" },
+  summaryAmount: { fontSize: 20, fontWeight: "600", marginTop: 4 },
+
+  listItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    borderBottomWidth: 0.5,
+    borderColor: "#ddd",
+  },
+
+  todayTotal: {
+    marginTop: 10,
+    fontWeight: "600",
+    textAlign: "right",
   },
 });
