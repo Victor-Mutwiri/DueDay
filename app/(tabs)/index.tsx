@@ -15,7 +15,7 @@ export default function HomeScreen() {
         {/* HEADER */}
         <View style={styles.header}>
           <Text style={styles.title}>MyMoney</Text>
-          <Pressable onPress={() => router.push("/modal")}>
+          <Pressable onPress={() => router.push("/modal/settings")}>
             <IconSymbol name="gearshape.fill" size={22} color="#555" />
           </Pressable>
         </View>
