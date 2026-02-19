@@ -1,86 +1,65 @@
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { LinearGradient } from "expo-linear-gradient";
-import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { getEntriesFromStorage } from "@/utilis/storage";
+import { useFocusEffect } from "@react-navigation/native";
+import { useRouter } from "expo-router";
+import { useCallback, useState } from "react";
+import { SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function HomeScreen() {
   const router = useRouter();
   const [entries, setEntries] = useState<any[]>([]);
 
-  const loadEntries = async () => {
-    const data = await AsyncStorage.getItem("entries");
-    if (data) setEntries(JSON.parse(data));
-  };
-
   useFocusEffect(
     useCallback(() => {
-      loadEntries();
+      loadData();
     }, []),
   );
 
-  const today = new Date();
-
-  const isThisMonth = (date: string) => {
-    const d = new Date(date);
-    return (
-      d.getMonth() === today.getMonth() &&
-      d.getFullYear() === today.getFullYear()
-    );
+  const loadData = async () => {
+    const data = await getEntriesFromStorage();
+    setEntries(data || []);
   };
+
+  const today = new Date();
 
   const expenses = entries.filter((e) => e.type === "expense");
   const income = entries.filter((e) => e.type === "income");
   const bills = entries.filter((e) => e.type === "bill");
+  const investments = entries.filter((e) => e.type === "investment");
 
-  const monthExpenses = expenses
-    .filter((e) => isThisMonth(e.date))
-    .reduce((sum, e) => sum + e.amount, 0);
-
-  const monthIncome = income
-    .filter((e) => isThisMonth(e.date))
-    .reduce((sum, e) => sum + e.amount, 0);
+  const monthExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const monthIncome = income.reduce((sum, e) => sum + e.amount, 0);
 
   const balance = monthIncome - monthExpenses;
 
-  const upcomingBills = bills.filter((b) => b.status === "upcoming");
+  const upcomingBills = bills
+    .filter((bill) => new Date(bill.dueDate) >= today)
+    .sort(
+      (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(),
+    );
 
-  const recentActivity = [...entries]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 6);
+  const recentEntries = [...entries]
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    )
+    .slice(0, 5);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#F4F6FA" }}>
+    <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* HERO HEADER */}
-        <LinearGradient colors={["#4F46E5", "#6366F1"]} style={styles.hero}>
-          <View style={styles.heroTop}>
-            <Text style={styles.appName}>MyMoney</Text>
-            <Pressable onPress={() => router.push("/modal/settings")}>
-              <IconSymbol name="gearshape.fill" size={22} color="#fff" />
-            </Pressable>
-          </View>
+        {/* BALANCE */}
+        <View style={styles.hero}>
+          <Text style={styles.heroLabel}>Current Balance</Text>
+          <Text style={styles.heroAmount}>Ksh {balance.toLocaleString()}</Text>
+        </View>
 
-          <Text style={styles.balanceLabel}>Total Balance</Text>
-          <Text style={styles.balance}>Ksh {balance.toLocaleString()}</Text>
-        </LinearGradient>
+        {/* MONTH SUMMARY */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>This Month</Text>
 
-        {/* KPI CARDS */}
-        <View style={styles.kpiRow}>
-          <View style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>Income</Text>
-            <Text style={[styles.kpiAmount, { color: "#16A34A" }]}>
-              + Ksh {monthIncome.toLocaleString()}
-            </Text>
-          </View>
-
-          <View style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>Expenses</Text>
-            <Text style={[styles.kpiAmount, { color: "#DC2626" }]}>
-              - Ksh {monthExpenses.toLocaleString()}
-            </Text>
+          <View style={styles.summaryCard}>
+            <Text>Income: Ksh {monthIncome.toLocaleString()}</Text>
+            <Text>Expenses: Ksh {monthExpenses.toLocaleString()}</Text>
           </View>
         </View>
 
@@ -88,185 +67,139 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Upcoming Bills</Text>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {upcomingBills.length === 0 && (
-              <Text style={{ color: "#888" }}>No upcoming bills</Text>
-            )}
+          {upcomingBills.length === 0 && (
+            <Text style={styles.empty}>No upcoming bills</Text>
+          )}
 
-            {upcomingBills.map((bill) => (
-              <View key={bill.id} style={styles.billCard}>
-                <Text style={styles.billName}>{bill.name}</Text>
-                <Text style={styles.billAmount}>Ksh {bill.amount}</Text>
+          {upcomingBills.map((bill) => {
+            const due = new Date(bill.dueDate);
+            const daysLeft = Math.ceil(
+              (due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+            );
+
+            return (
+              <View key={bill.id} style={styles.itemCard}>
+                <View>
+                  <Text style={styles.itemTitle}>{bill.name}</Text>
+                  <Text style={styles.itemSub}>Due in {daysLeft} days</Text>
+                </View>
+                <Text style={styles.amount}>
+                  Ksh {bill.amount.toLocaleString()}
+                </Text>
               </View>
-            ))}
-          </ScrollView>
+            );
+          })}
+        </View>
+
+        {/* INVESTMENTS */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Investments</Text>
+
+          {investments.length === 0 && (
+            <Text style={styles.empty}>No investments yet</Text>
+          )}
+
+          {investments.map((inv) => {
+            const displayValue = inv.currentValue || inv.amount || 0;
+            return (
+              <View key={inv.id} style={styles.itemCard}>
+                <View>
+                  <Text style={styles.itemTitle}>{inv.name}</Text>
+                  <Text style={styles.itemSub}>{inv.description}</Text>
+                </View>
+                <Text style={styles.amount}>
+                  Ksh {displayValue.toLocaleString()}
+                </Text>
+              </View>
+            );
+          })}
         </View>
 
         {/* RECENT ACTIVITY */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Recent Activity</Text>
 
-          {recentActivity.map((item) => {
-            const isExpense = item.type === "expense";
-            const isIncome = item.type === "income";
-
-            return (
-              <View key={item.id} style={styles.activityItem}>
-                <View>
-                  <Text style={styles.activityTitle}>
-                    {item.description ||
-                      item.name ||
-                      item.source ||
-                      item.category}
-                  </Text>
-                  <Text style={styles.activityType}>
-                    {item.type.toUpperCase()}
-                  </Text>
-                </View>
-
-                <Text
-                  style={[
-                    styles.activityAmount,
-                    {
-                      color: isExpense
-                        ? "#DC2626"
-                        : isIncome
-                          ? "#16A34A"
-                          : "#111",
-                    },
-                  ]}
-                >
-                  {isExpense && "- "}
-                  {isIncome && "+ "}
-                  Ksh {(item.amount ?? item.investedAmount)?.toLocaleString()}
-                </Text>
-              </View>
-            );
-          })}
+          {recentEntries.map((entry) => (
+            <View key={entry.id} style={styles.itemCard}>
+              <Text style={styles.itemTitle}>
+                {entry.description || entry.name}
+              </Text>
+              <Text
+                style={[
+                  styles.amount,
+                  {
+                    color: entry.type === "expense" ? "#DC2626" : "#16A34A",
+                  },
+                ]}
+              >
+                {entry.type === "expense" ? "-" : "+"}Ksh{" "}
+                {entry.amount?.toLocaleString()}
+              </Text>
+            </View>
+          ))}
         </View>
+
+        <View style={{ height: 60 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+  },
   hero: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 40,
+    padding: 24,
+    backgroundColor: "#111827",
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
   },
-
-  heroTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  heroLabel: {
+    color: "#9CA3AF",
   },
-
-  appName: {
+  heroAmount: {
     color: "#fff",
-    fontSize: 20,
-    fontWeight: "700",
+    fontSize: 32,
+    fontWeight: "800",
+    marginTop: 8,
   },
-
-  balanceLabel: {
-    color: "rgba(255,255,255,0.8)",
+  section: {
+    paddingHorizontal: 20,
     marginTop: 30,
   },
-
-  balance: {
-    fontSize: 34,
-    fontWeight: "800",
-    color: "#fff",
-    marginTop: 6,
-  },
-
-  kpiRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    marginTop: -25,
-  },
-
-  kpiCard: {
-    backgroundColor: "#fff",
-    width: "48%",
-    padding: 16,
-    borderRadius: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-
-  kpiLabel: {
-    color: "#777",
-    fontSize: 13,
-  },
-
-  kpiAmount: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginTop: 6,
-  },
-
-  section: {
-    paddingHorizontal: 16,
-    marginTop: 25,
-  },
-
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
-    marginBottom: 12,
+    marginBottom: 14,
   },
-
-  billCard: {
+  summaryCard: {
     backgroundColor: "#fff",
     padding: 18,
-    borderRadius: 16,
-    marginRight: 12,
-    width: 170,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    borderRadius: 18,
   },
-
-  billName: {
-    fontWeight: "600",
-    fontSize: 15,
-  },
-
-  billAmount: {
-    marginTop: 6,
-    fontWeight: "700",
-  },
-
-  activityItem: {
+  itemCard: {
     backgroundColor: "#fff",
     padding: 16,
-    borderRadius: 14,
-    marginBottom: 12,
+    borderRadius: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 12,
   },
-
-  activityTitle: {
+  itemTitle: {
     fontWeight: "600",
-    fontSize: 15,
   },
-
-  activityType: {
-    fontSize: 11,
-    color: "#888",
+  itemSub: {
+    color: "#64748B",
+    fontSize: 12,
     marginTop: 4,
   },
-
-  activityAmount: {
+  amount: {
     fontWeight: "700",
-    fontSize: 15,
+  },
+  empty: {
+    color: "#94A3B8",
   },
 });
